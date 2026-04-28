@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AsChat Production</title>
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif
+}
+html,body{
+height:100%;
+overflow:hidden
+}
+body{
+background:linear-gradient(135deg,#0f172a,#1e293b,#334155)
+}
+.hidden{
+display:none!important
+}
+#loginPage{
+height:100dvh;
+display:flex;
+justify-content:center;
+align-items:center;
+padding:20px;
+background:
+radial-gradient(circle at top left,#38bdf8 0%,transparent 30%),
+radial-gradient(circle at bottom right,#8b5cf6 0%,transparent 30%),
+linear-gradient(135deg,#0f172a,#1e293b,#334155)
+}
+.loginBox{
+width:100%;
+max-width:380px;
+background:rgba(255,255,255,.12);
+backdrop-filter:blur(18px);
+-webkit-backdrop-filter:blur(18px);
+padding:26px;
+border-radius:24px;
+box-shadow:0 20px 45px rgba(0,0,0,.25);
+border:1px solid rgba(255,255,255,.14)
+}
+.loginBox h2{
+text-align:center;
+margin-bottom:18px;
+color:#fff;
+font-size:30px;
+font-weight:800;
+letter-spacing:.4px
+}
+.loginBox input{
+width:100%;
+padding:14px 15px;
+margin:8px 0;
+border:1px solid rgba(255,255,255,.18);
+border-radius:14px;
+background:rgba(255,255,255,.9);
+font-size:16px;
+outline:none;
+transition:.25s
+}
+.loginBox input:focus{
+transform:translateY(-1px);
+box-shadow:0 0 0 3px rgba(56,189,248,.25)
+}
+.loginBox button{
+width:100%;
+padding:14px;
+border:none;
+border-radius:14px;
+background:linear-gradient(135deg,#06b6d4,#3b82f6);
+color:#fff;
+font-weight:800;
+font-size:15px;
+margin-top:10px;
+box-shadow:0 10px 24px rgba(59,130,246,.35);
+transition:.25s
+}
+.loginBox button:active{
+transform:scale(.98)
+}
+.page{
+height:100dvh;
+width:100%;
+display:flex;
+flex-direction:column;
+background:linear-gradient(180deg,#e2e8f0 0%,#f8fafc 100%);
+overflow:hidden
+}
+.topbar{
+background:linear-gradient(135deg,#0f172a,#1d4ed8);
+color:#fff;
+padding:14px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+font-weight:700;
+box-shadow:0 8px 24px rgba(15,23,42,.18);
+flex-shrink:0
+}
+.topBtn{
+border:none;
+background:rgba(255,255,255,.14);
+color:#fff;
+padding:10px 14px;
+border-radius:12px;
+font-weight:700;
+backdrop-filter:blur(8px);
+-webkit-backdrop-filter:blur(8px)
+}
+#userList{
+flex:1;
+overflow:auto;
+padding:10px
+}
+.user{
+padding:15px;
+margin-bottom:10px;
+border-radius:18px;
+background:rgba(255,255,255,.78);
+backdrop-filter:blur(10px);
+-webkit-backdrop-filter:blur(10px);
+box-shadow:0 8px 20px rgba(0,0,0,.07);
+cursor:pointer;
+border:1px solid rgba(255,255,255,.5);
+transition:.25s
+}
+.user:hover{
+background:#fff;
+transform:translateY(-2px)
+}
+.small{
+font-size:12px;
+color:#0f172a;
+margin-top:4px;
+font-weight:500
+}
+.chatHead{
+background:linear-gradient(135deg,#0f172a,#1d4ed8);
+color:#fff;
+padding:10px 12px;
+display:flex;
+align-items:center;
+gap:8px;
+box-shadow:0 8px 24px rgba(15,23,42,.16);
+flex-shrink:0;
+min-height:72px
+}
+.chatInfo{
+flex:1;
+min-width:0;
+display:flex;
+flex-direction:column;
+justify-content:center
+}
+#chatName{
+font-size:18px;
+font-weight:800;
+line-height:1.1;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis
+}
+#chatStatus{
+font-size:13px;
+color:#fff!important;
+margin-top:4px;
+font-weight:500
+}
+.chatActions{
+display:flex;
+align-items:center;
+gap:8px;
+flex-shrink:0
+}
+.iconBtn{
+border:none;
+background:rgba(255,255,255,.14);
+color:#fff;
+width:46px;
+height:46px;
+border-radius:14px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:18px;
+font-weight:700;
+flex-shrink:0
+}
+.actionBtn{
+border:none;
+background:rgba(255,255,255,.14);
+color:#fff;
+height:44px;
+padding:0 14px;
+border-radius:14px;
+font-weight:700;
+font-size:14px;
+display:flex;
+align-items:center;
+justify-content:center;
+flex-shrink:0
+}
+#chatBox{
+flex:1;
+min-height:0;
+overflow:auto;
+padding:14px 12px;
+background:
+radial-gradient(circle at top right,rgba(59,130,246,.08),transparent 20%),
+radial-gradient(circle at bottom left,rgba(139,92,246,.08),transparent 20%),
+linear-gradient(180deg,#f8fafc,#e2e8f0)
+}
+.msg{
+max-width:78%;
+padding:12px 14px;
+margin:10px 0;
+border-radius:18px;
+word-wrap:break-word;
+overflow-wrap:anywhere;
+box-shadow:0 6px 16px rgba(0,0,0,.08);
+font-size:15px;
+line-height:1.45
+}
+.me{
+background:linear-gradient(135deg,#38bdf8,#3b82f6);
+color:#fff;
+margin-left:auto;
+border-bottom-right-radius:6px
+}
+.other{
+background:rgba(255,255,255,.95);
+color:#0f172a;
+border-bottom-left-radius:6px
+}
+.time{
+font-size:11px;
+color:rgba(0,0,0,.55);
+margin-top:6px
+}
+#typing{
+padding:8px 12px;
+background:rgba(255,255,255,.72);
+color:#0f172a!important;
+backdrop-filter:blur(10px);
+-webkit-backdrop-filter:blur(10px);
+font-size:13px;
+flex-shrink:0
+}
+.bottomWrap{
+flex-shrink:0;
+padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+background:rgba(255,255,255,.82);
+backdrop-filter:blur(14px);
+-webkit-backdrop-filter:blur(14px);
+border-top:1px solid rgba(255,255,255,.6)
+}
+.bottom{
+display:flex;
+align-items:center;
+gap:8px
+}
+.attachBtn{
+border:none;
+width:42px;
+height:42px;
+border-radius:14px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:18px;
+color:#fff;
+flex-shrink:0
+}
+.galleryBtn{
+background:linear-gradient(135deg,#10b981,#059669);
+box-shadow:0 6px 14px rgba(16,185,129,.28)
+}
+.cameraBtn{
+background:linear-gradient(135deg,#f59e0b,#d97706);
+box-shadow:0 6px 14px rgba(245,158,11,.28)
+}
+#msgInput{
+flex:1;
+min-width:0;
+height:44px;
+padding:0 16px;
+border:none;
+outline:none;
+border-radius:22px;
+background:#fff;
+box-shadow:inset 0 2px 6px rgba(0,0,0,.04);
+font-size:15px
+}
+.sendBtn{
+border:none;
+height:44px;
+padding:0 16px;
+border-radius:18px;
+background:linear-gradient(135deg,#06b6d4,#2563eb);
+color:#fff;
+font-weight:800;
+font-size:14px;
+box-shadow:0 8px 18px rgba(37,99,235,.22);
+flex-shrink:0
+}
+.credit{
+text-align:center;
+font-size:11px;
+color:#64748b;
+padding:6px 10px 2px
+}
+#imgViewer{
+position:fixed;
+inset:0;
+background:rgba(2,6,23,.94);
+z-index:9999;
+display:flex;
+justify-content:center;
+align-items:center
+}
+#imgViewer button{
+position:absolute;
+top:20px;
+right:20px;
+padding:10px 14px;
+border:none;
+border-radius:10px;
+font-size:18px;
+background:#fff;
+color:#111827;
+font-weight:700
+}
+#bigImg{
+max-width:95%;
+max-height:95%;
+border-radius:14px;
+box-shadow:0 20px 50px rgba(0,0,0,.35)
+}
+@media (max-width:480px){
+.page{
+height:100dvh
+}
+.topbar{
+padding:12px 10px
+}
+.chatHead{
+padding:8px 8px;
+gap:6px;
+min-height:64px
+}
+.iconBtn{
+width:40px;
+height:40px;
+border-radius:12px;
+font-size:16px
+}
+.actionBtn{
+height:40px;
+padding:0 10px;
+border-radius:12px;
+font-size:13px
+}
+#chatName{
+font-size:16px
+}
+#chatStatus{
+font-size:12px
+}
+#chatBox{
+padding:10px 8px
+}
+.msg{
+max-width:84%;
+font-size:14px;
+padding:10px 12px;
+margin:8px 0
+}
+#typing{
+padding:7px 10px;
+font-size:12px
+}
+.bottomWrap{
+padding:6px 6px calc(10px + env(safe-area-inset-bottom))
+}
+.bottom{
+gap:6px
+}
+.attachBtn{
+width:38px;
+height:38px;
+font-size:16px;
+border-radius:12px
+}
+#msgInput{
+height:40px;
+font-size:14px;
+padding:0 14px
+}
+.sendBtn{
+height:40px;
+padding:0 14px;
+font-size:14px;
+border-radius:14px
+}
+.credit{
+padding-bottom:0
+}
+}
+</style>
+</head>
+<body>
+
+<div id="imgViewer" class="hidden">
+<button onclick="closeImage()">✕</button>
+<img id="bigImg">
+</div>
+
+<div id="loginPage">
+<div class="loginBox">
+<h2>AsChat Login</h2>
+<input id="username" placeholder="Username">
+<input id="password" placeholder="Code" type="password">
+<button onclick="login()">Login</button>
+</div>
+</div>
+
+<div id="homePage" class="page hidden">
+<div class="topbar">
+<div id="myName">User</div>
+<button class="topBtn" onclick="logout()">Logout</button>
+</div>
+<div id="userList"></div>
+
+</div>
+
+<div id="chatPage" class="page hidden">
+<div class="chatHead">
+<button class="iconBtn" onclick="goHome()">←</button>
+<div class="chatInfo">
+<div id="chatName"></div>
+<div id="chatStatus" class="small"></div>
+</div>
+<div class="chatActions">
+<button class="actionBtn" onclick="clearChat()">Clear</button>
+<button class="actionBtn" onclick="logout()">Logout</button>
+</div>
+</div>
+
+<div id="chatBox"></div>
+<div id="typing" class="small"></div>
+
+<div class="bottomWrap">
+<div class="bottom">
+<input type="file" id="galleryFile" accept="image/*" hidden onchange="sendImage(this.files[0])">
+<input type="file" id="cameraFile" accept="image/*" capture="environment" hidden onchange="sendImage(this.files[0])">
+<button class="attachBtn galleryBtn" onclick="galleryFile.click()">🖼</button>
+<button class="attachBtn cameraBtn" onclick="cameraFile.click()">📷</button>
+<input id="msgInput" placeholder="Type message">
+<button class="sendBtn" onclick="sendMsg()">Send</button>
+</div>
+
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getDatabase, ref, update, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+apiKey:"AIzaSyARfRr2k9oQxXy7KoAGc4KU0sfTZ7YaEk0",
+authDomain:"aschat-d0a6f.firebaseapp.com",
+projectId:"aschat-d0a6f",
+storageBucket:"aschat-d0a6f.firebasestorage.app",
+messagingSenderId:"15168326802",
+appId:"1:15168326802:web:cb4377efbbc0c722d4aa4b"
+};
+
+const USERS = {
+Ahmed:"1432",
+akif:"786",
+sadaf:"143"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const rtdb = getDatabase(app,"https://aschat-d0a6f-default-rtdb.asia-southeast1.firebasedatabase.app");
+
+let me="";
+let currentChat="";
+let unsubMessages=null;
+
+function roomId(a,b){
+return [a,b].sort().join("_");
+}
+
+function show(page){
+loginPage.classList.add("hidden");
+homePage.classList.add("hidden");
+chatPage.classList.add("hidden");
+document.getElementById(page).classList.remove("hidden");
+}
+
+window.login=function(){
+let u=username.value.trim();
+let p=password.value.trim();
+if(USERS[u] && USERS[u]===p){
+me=u;
+localStorage.setItem("aschat_user",u);
+myName.innerText=u;
+show("homePage");
+setOnline();
+loadUsers();
+}else{
+alert("Wrong login");
+}
+};
+
+function autoLogin(){
+let saved=localStorage.getItem("aschat_user");
+if(saved && USERS[saved]){
+username.value=saved;
+password.value=USERS[saved];
+login();
+}
+}
+
+window.logout=function(){
+setOffline();
+localStorage.removeItem("aschat_user");
+location.reload();
+};
+
+function setOnline(){
+let r=ref(rtdb,"users/"+me);
+update(r,{online:true,typingTo:""});
+onDisconnect(r).update({
+online:false,
+typingTo:"",
+lastSeen:{".sv":"timestamp"}
+});
+}
+
+function setOffline(){
+if(!me) return;
+update(ref(rtdb,"users/"+me),{
+online:false,
+typingTo:"",
+lastSeen:{".sv":"timestamp"}
+});
+}
+
+window.clearChat=async function(){
+if(!currentChat) return;
+if(!confirm("Delete full chat?")) return;
+let rid=roomId(me,currentChat);
+const snap=await getDocs(collection(db,"chats",rid,"messages"));
+for(const d of snap.docs){
+await deleteDoc(d.ref);
+}
+chatBox.innerHTML="";
+};
+
+function loadUsers(){
+userList.innerHTML="";
+Object.keys(USERS).forEach(name=>{
+if(name===me) return;
+
+let div=document.createElement("div");
+div.className="user";
+div.onclick=()=>openChat(name);
+div.innerHTML=
+"<b>"+name+
+" <span id='badge_"+name+"' style='background:red;color:white;padding:2px 7px;border-radius:20px;font-size:11px;display:none;'></span></b>"+
+"<div class='small' id='u_"+name+"'>Loading...</div>";
+userList.appendChild(div);
+
+onValue(ref(rtdb,"users/"+name),(snap)=>{
+let d=snap.val();
+if(!d){
+document.getElementById("u_"+name).innerText="Offline";
+return;
+}
+document.getElementById("u_"+name).innerText=
+d.online ? "Online" : "Last seen "+new Date(d.lastSeen).toLocaleTimeString();
+});
+
+let rid=roomId(me,name);
+const q=query(collection(db,"chats",rid,"messages"),orderBy("time"));
+onSnapshot(q,(snap)=>{
+let count=0;
+snap.docs.forEach((docSnap)=>{
+let d=docSnap.data();
+if(d.to===me && d.from===name && d.seen!==true){
+count++;
+}
+});
+let badge=document.getElementById("badge_"+name);
+if(count>0){
+badge.innerText=count;
+badge.style.display="inline-block";
+}else{
+badge.innerText="";
+badge.style.display="none";
+}
+});
+});
+}
+
+window.openChat=function(name){
+currentChat=name;
+chatName.innerText=name;
+show("chatPage");
+listenHeader();
+listenMessages();
+};
+
+window.goHome=function(){
+currentChat="";
+if(unsubMessages) unsubMessages();
+show("homePage");
+};
+
+function listenHeader(){
+onValue(ref(rtdb,"users/"+currentChat),(snap)=>{
+let d=snap.val();
+if(!d) return;
+chatStatus.innerText=d.online ? "Online" : "Last seen "+new Date(d.lastSeen).toLocaleTimeString();
+typing.innerText=d.typingTo===me ? "Typing..." : "";
+});
+}
+
+function listenMessages(){
+if(unsubMessages) unsubMessages();
+let rid=roomId(me,currentChat);
+const q=query(collection(db,"chats",rid,"messages"),orderBy("time"));
+unsubMessages=onSnapshot(q,(snap)=>{
+chatBox.innerHTML="";
+let openBadge=document.getElementById("badge_"+currentChat);
+if(openBadge){
+openBadge.style.display="none";
+openBadge.innerText="";
+}
+snap.docs.forEach((docSnap)=>{
+let d=docSnap.data();
+let content="";
+if(d.image){
+content="<img src='"+d.image+"' onclick='openImage(this.src)' style='max-width:220px;border-radius:10px;display:block;cursor:pointer'>";
+}else{
+content=d.text;
+}
+let div=document.createElement("div");
+div.className="msg "+(d.from===me?"me":"other");
+let tick="";
+if(d.from===me){
+tick=d.seen ? " ✓✓ Seen" : " ✓ Sent";
+}
+div.innerHTML=content+"<div class='time'>"+new Date(d.time).toLocaleTimeString()+tick+"</div>";
+chatBox.appendChild(div);
+if(d.to===me && d.seen!==true){
+updateDoc(doc(db,"chats",rid,"messages",docSnap.id),{seen:true});
+}
+});
+chatBox.scrollTop=chatBox.scrollHeight;
+});
+}
+
+window.sendMsg=async function(){
+let text=msgInput.value.trim();
+if(!text || !currentChat) return;
+let rid=roomId(me,currentChat);
+await addDoc(collection(db,"chats",rid,"messages"),{
+from:me,
+to:currentChat,
+text:text,
+time:Date.now(),
+seen:false
+});
+msgInput.value="";
+update(ref(rtdb,"users/"+me),{online:true,typingTo:""});
+};
+
+window.sendImage=function(file){
+if(!file || !currentChat) return;
+let reader=new FileReader();
+reader.onload=function(e){
+let img=new Image();
+img.onload=async function(){
+let canvas=document.createElement("canvas");
+let ctx=canvas.getContext("2d");
+let maxW=800;
+let finalW=img.width>maxW?maxW:img.width;
+let scale=finalW/img.width;
+canvas.width=finalW;
+canvas.height=img.height*scale;
+ctx.drawImage(img,0,0,canvas.width,canvas.height);
+let compressed=canvas.toDataURL("image/jpeg",0.6);
+let rid=roomId(me,currentChat);
+await addDoc(collection(db,"chats",rid,"messages"),{
+from:me,
+to:currentChat,
+image:compressed,
+time:Date.now(),
+seen:false
+});
+galleryFile.value="";
+cameraFile.value="";
+};
+img.src=e.target.result;
+};
+reader.readAsDataURL(file);
+};
+
+window.openImage=function(src){
+document.getElementById("imgViewer").classList.remove("hidden");
+document.getElementById("bigImg").src=src;
+};
+
+window.closeImage=function(){
+document.getElementById("imgViewer").classList.add("hidden");
+};
+
+msgInput.addEventListener("input",()=>{
+if(!me || !currentChat) return;
+let r=ref(rtdb,"users/"+me);
+update(r,{typingTo:currentChat,online:true});
+clearTimeout(window.typingTimer);
+window.typingTimer=setTimeout(()=>{
+update(r,{typingTo:"",online:true});
+},1500);
+});
+
+window.addEventListener("beforeunload",()=>{
+setOffline();
+});
+
+document.addEventListener("contextmenu",e=>e.preventDefault());
+document.addEventListener("keydown",e=>{
+if(e.key==="F12") e.preventDefault();
+if(e.ctrlKey&&e.shiftKey&&["I","J","C"].includes(e.key.toUpperCase())) e.preventDefault();
+if(e.ctrlKey&&e.key.toLowerCase()==="u") e.preventDefault();
+});
+
+autoLogin();
+</script>
+</body>
+</html>
