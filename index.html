@@ -782,19 +782,7 @@ snap.docs.forEach((docSnap)=>{
 
 
 let d=docSnap.data();
-if(
-d.to===me &&
-d.from!==me &&
-!notifiedMessages[docSnap.id]
-){
 
-notifyUser(
-d.from,
-d.text || "📷 Sent an image"
-);
-
-notifiedMessages[docSnap.id]=true;
-}
 
 
 
@@ -1022,7 +1010,7 @@ window.sendMsg=async function(){
 let text=msgInput.value.trim();
 if(!text || !currentChat) return;
 let rid=roomId(me,currentChat);
-await addDoc(collection(db,"chats",rid,"messages"),{
+const newMsg=await addDoc(collection(db,"chats",rid,"messages"),{
 from:me,
 to:currentChat,
 text:text,
@@ -1032,6 +1020,24 @@ reply:replyingMessage
 });
 msgInput.value="";
 cancelReply();
+if(
+currentChat!=="Ahmed" &&
+me!=="Ahmed"
+){
+
+}
+
+if(currentChat==="Ahmed"){
+
+localStorage.setItem(
+"notify_"+Date.now(),
+JSON.stringify({
+from:me,
+text:text || "📷 Sent an image"
+})
+);
+
+}
 update(ref(rtdb,"users/"+me),{online:true,typingTo:""});
 };
 
@@ -1187,6 +1193,22 @@ if(e.ctrlKey&&e.key.toLowerCase()==="u") e.preventDefault();
 });
 
 autoLogin();
+
+window.addEventListener("storage",(e)=>{
+
+if(me!=="Ahmed") return;
+
+if(!e.key.startsWith("notify_")) return;
+
+let data=JSON.parse(e.newValue);
+
+notifyUser(
+data.from,
+data.text
+);
+
+});
+
 </script>
 </body>
 </html>
