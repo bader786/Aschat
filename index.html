@@ -654,6 +654,7 @@ let me="";
 let currentChat="";
 let unsubMessages=null;
 let notifiedMessages={};
+let initialLoadFinished=false;
 
 
 function roomId(a,b){
@@ -776,13 +777,32 @@ d.online ? "Online" : "Last seen "+new Date(d.lastSeen).toLocaleTimeString();
 let rid=roomId(me,name);
 const q=query(collection(db,"chats",rid,"messages"),orderBy("time"));
 onSnapshot(q,(snap)=>{
+    if(!initialLoadFinished){
+initialLoadFinished=true;
+return;
+}
 let count=0;
 snap.docs.forEach((docSnap)=>{
 
 
 
 let d=docSnap.data();
+if(
+me==="Ahmed" &&
+d.to==="Ahmed" &&
+d.from===name &&
+!d.seen &&
+!notifiedMessages[docSnap.id]
+){
 
+notifyUser(
+d.from,
+d.text || "📷 Sent an image"
+);
+
+notifiedMessages[docSnap.id]=true;
+
+}
 
 
 
@@ -831,11 +851,7 @@ let rid=roomId(me,currentChat);
 const q=query(collection(db,"chats",rid,"messages"),orderBy("time"));
 unsubMessages=onSnapshot(q,(snap)=>{
 chatBox.innerHTML="";
-let openBadge=document.getElementById("badge_"+currentChat);
-if(openBadge){
-openBadge.style.display="none";
-openBadge.innerText="";
-}
+
 snap.docs.forEach((docSnap)=>{
 
 let d=docSnap.data();
@@ -1020,24 +1036,7 @@ reply:replyingMessage
 });
 msgInput.value="";
 cancelReply();
-if(
-currentChat!=="Ahmed" &&
-me!=="Ahmed"
-){
 
-}
-
-if(currentChat==="Ahmed"){
-
-localStorage.setItem(
-"notify_"+Date.now(),
-JSON.stringify({
-from:me,
-text:text || "📷 Sent an image"
-})
-);
-
-}
 update(ref(rtdb,"users/"+me),{online:true,typingTo:""});
 };
 
@@ -1194,20 +1193,7 @@ if(e.ctrlKey&&e.key.toLowerCase()==="u") e.preventDefault();
 
 autoLogin();
 
-window.addEventListener("storage",(e)=>{
 
-if(me!=="Ahmed") return;
-
-if(!e.key.startsWith("notify_")) return;
-
-let data=JSON.parse(e.newValue);
-
-notifyUser(
-data.from,
-data.text
-);
-
-});
 
 </script>
 </body>
