@@ -943,8 +943,18 @@ div.dataset.text=d.text || "📷 Image";
 row.appendChild(div);
 
 chatBox.appendChild(row);
-if(d.to===me && d.seen!==true){
-updateDoc(doc(db,"chats",rid,"messages",docSnap.id),{seen:true});
+if(
+d.to===me &&
+d.seen!==true &&
+document.visibilityState==="visible" &&
+currentChat===d.from
+){
+
+updateDoc(
+doc(db,"chats",rid,"messages",docSnap.id),
+{seen:true}
+);
+
 }
 });
 chatBox.scrollTop=chatBox.scrollHeight;
