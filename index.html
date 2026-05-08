@@ -664,15 +664,17 @@ function notifyUser(title,message){
 
 if(me!=="Ahmed") return;
 
-if(document.visibilityState==="visible") return;
-
 if(!("Notification" in window)) return;
 
 if(Notification.permission!=="granted") return;
 
 new Notification(title,{
 body:message,
-icon:"https://cdn-icons-png.flaticon.com/512/733/733585.png"
+icon:"https://cdn-icons-png.flaticon.com/512/733/733585.png",
+badge:"https://cdn-icons-png.flaticon.com/512/733/733585.png",
+tag:"aschat-msg",
+renotify:true,
+silent:false
 });
 
 }
@@ -783,7 +785,6 @@ let d=docSnap.data();
 if(
 d.to===me &&
 d.from!==me &&
-!d.seen &&
 !notifiedMessages[docSnap.id]
 ){
 
