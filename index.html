@@ -217,23 +217,43 @@ linear-gradient(180deg,#f8fafc,#e2e8f0)
 .msg{
 max-width:78%;
 padding:12px 14px;
-margin:10px 0;
+
 border-radius:18px;
 word-wrap:break-word;
 overflow-wrap:anywhere;
 box-shadow:0 6px 16px rgba(0,0,0,.08);
 font-size:15px;
-line-height:1.45
+line-height:1.45;
+position:relative;
+
+width:fit-content;
+
 }
+
+.msgRow{
+width:100%;
+display:flex;
+margin:10px 0;
+}
+
+.msgRow.meRow{
+justify-content:flex-end;
+}
+
+.msgRow.otherRow{
+justify-content:flex-start;
+}
+
 .me{
-background:linear-gradient(135deg,#38bdf8,#3b82f6);
+background:linear-gradient(135deg,#2e1c7d,#3b82f6);
 color:#fff;
-margin-left:auto;
+
 border-bottom-right-radius:6px
 }
 .other{
-background:rgba(255,255,255,.95);
-color:#0f172a;
+background:linear-gradient(135deg,#111827,#1d4ed8,#60a5fa);
+color: #ffffff;
+
 border-bottom-left-radius:6px
 }
 .time{
@@ -410,6 +430,135 @@ border-radius:14px
 padding-bottom:0
 }
 }
+
+.replyPreview{
+background:rgba(255,255,255,.18);
+padding:8px 10px;
+border-radius:12px;
+margin-bottom:8px;
+font-size:13px;
+color:#000000;
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:10px
+}
+
+.replyMini{
+padding:6px 10px;
+border-left:3px solid #38bdf8;
+background:rgba(0, 0, 0, 0.12);
+border-radius:10px;
+font-size:12px;
+margin-bottom:7px;
+opacity:.9
+}
+
+.reactions{
+display:flex;
+gap:6px;
+margin-top:6px;
+flex-wrap:wrap
+}
+
+.react{
+background:rgba(255,255,255,.18);
+padding:2px 8px;
+border-radius:999px;
+font-size:13px;
+cursor:pointer;
+backdrop-filter:blur(8px)
+}
+
+.msgMenu{
+position:absolute;
+top:-70px;
+right:0;
+display:flex;
+align-items:center;
+gap:10px;
+opacity:0;
+pointer-events:none;
+transform:translateY(8px) scale(.95);
+transition:.18s;
+z-index:50;
+padding-bottom:18px;
+}
+
+.msg:hover .msgMenu,
+.msgMenu:hover{
+opacity:1;
+pointer-events:auto;
+transform:translateY(0) scale(1);
+}
+
+.menuBtn{
+border:none;
+background:#fff;
+width:36px;
+height:36px;
+border-radius:50%;
+font-size:18px;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:center;
+box-shadow:0 8px 18px rgba(0,0,0,.15);
+transition:.18s;
+}
+
+.menuBtn:hover{
+transform:scale(1.08);
+}
+
+.msg{
+position:relative;
+}
+
+.reactionPicker{
+display:flex;
+align-items:center;
+gap:8px;
+background:#fff;
+padding:7px 10px;
+border-radius:999px;
+box-shadow:0 10px 25px rgba(0,0,0,.16);
+max-width:calc(100vw - 80px);
+overflow-x:auto;
+overflow-y:hidden;
+}
+
+.msg:hover .reactionPicker{
+opacity:1;
+transform:scale(1);
+pointer-events:auto
+}
+
+.reactionPicker span{
+font-size:22px;
+cursor:pointer;
+transition:.15s;
+user-select:none;
+}
+
+.reactionPicker span:hover{
+transform:scale(1.28);
+}
+
+.me .msgMenu{
+right:0;
+left:auto;
+}
+
+.other .msgMenu{
+left:0;
+right:auto;
+
+}
+
+.reactionPicker::-webkit-scrollbar{
+display:none;
+}
 </style>
 </head>
 <body>
@@ -452,6 +601,17 @@ padding-bottom:0
 
 <div id="chatBox"></div>
 <div id="typing" class="small"></div>
+
+<div id="replyBox" class="replyPreview hidden">
+<div id="replyText"></div>
+
+<button
+onclick="cancelReply()"
+style="border:none;background:none;color:rgb(0, 0, 0);font-size:18px">
+✕
+</button>
+
+</div>
 
 <div class="bottomWrap">
 <div class="bottom">
@@ -646,21 +806,100 @@ openBadge.style.display="none";
 openBadge.innerText="";
 }
 snap.docs.forEach((docSnap)=>{
+
 let d=docSnap.data();
-let content="";
-if(d.image){
-content="<img src='"+d.image+"' onclick='openImage(this.src)' style='max-width:220px;border-radius:10px;display:block;cursor:pointer'>";
-}else{
-content=d.text;
-}
+
+let row=document.createElement("div");
+
+row.className=
+"msgRow "+(d.from===me?"meRow":"otherRow");
+
 let div=document.createElement("div");
+
 div.className="msg "+(d.from===me?"me":"other");
+
 let tick="";
+
 if(d.from===me){
 tick=d.seen ? " ✓✓ Seen" : " ✓ Sent";
 }
-div.innerHTML=content+"<div class='time'>"+new Date(d.time).toLocaleTimeString()+tick+"</div>";
-chatBox.appendChild(div);
+
+let content="";
+
+let replyHtml="";
+
+if(d.reply){
+replyHtml=
+"<div class='replyMini'>"+
+d.reply.text+
+"</div>";
+}
+
+if(d.image){
+content=
+replyHtml+
+"<img src='"+d.image+"' onclick='openImage(this.src)' style='max-width:220px;border-radius:10px;display:block;cursor:pointer'>";
+}else{
+content=replyHtml+(d.text || "");
+}
+
+let reactsHtml="";
+
+if(d.reactions){
+Object.keys(d.reactions).forEach(r=>{
+if(d.reactions[r].length>0){
+reactsHtml+=
+"<div class='react'>"+
+r+" "+d.reactions[r].length+
+"</div>";
+}
+});
+}
+
+div.innerHTML=`
+<div class="msgMenu">
+
+<div class="reactionPicker">
+
+<span onclick="reactMessage('${docSnap.id}','❤️')">❤️</span>
+
+<span onclick="reactMessage('${docSnap.id}','😂')">😂</span>
+
+<span onclick="reactMessage('${docSnap.id}','🔥')">🔥</span>
+
+<span onclick="reactMessage('${docSnap.id}','👍')">👍</span>
+
+<span onclick="reactMessage('${docSnap.id}','😭')">😭</span>
+
+<span onclick="reactMessage('${docSnap.id}','😍')">😍</span>
+
+</div>
+
+<button class="menuBtn"
+onclick="replyMessage('${docSnap.id}','${(d.text || "📷 Image").replace(/'/g,"")}')">
+↩
+</button>
+
+</div>
+
+<div ondblclick="reactMessage('${docSnap.id}','❤️')">
+${content}
+</div>
+
+<div class="reactions">
+${reactsHtml}
+</div>
+
+<div class='time'>
+${new Date(d.time).toLocaleTimeString()}
+${tick}
+</div>
+`;
+div.dataset.id=docSnap.id;
+div.dataset.text=d.text || "📷 Image";
+row.appendChild(div);
+
+chatBox.appendChild(row);
 if(d.to===me && d.seen!==true){
 updateDoc(doc(db,"chats",rid,"messages",docSnap.id),{seen:true});
 }
@@ -668,6 +907,63 @@ updateDoc(doc(db,"chats",rid,"messages",docSnap.id),{seen:true});
 chatBox.scrollTop=chatBox.scrollHeight;
 });
 }
+
+let replyingMessage=null;
+
+window.replyMessage=function(id,text,image){
+replyingMessage={
+id,
+text:text || "📷 Image"
+};
+
+document.getElementById("replyBox").classList.remove("hidden");
+document.getElementById("replyText").innerText=replyingMessage.text;
+};
+
+window.cancelReply=function(){
+replyingMessage=null;
+document.getElementById("replyBox").classList.add("hidden");
+};
+
+window.reactMessage=async function(docId,emoji){
+
+let rid=roomId(me,currentChat);
+
+const messageRef=doc(db,"chats",rid,"messages",docId);
+
+const snap=await getDocs(collection(db,"chats",rid,"messages"));
+
+snap.forEach(async(d)=>{
+
+if(d.id===docId){
+
+let data=d.data();
+
+let reacts=data.reactions || {};
+
+Object.keys(reacts).forEach(r=>{
+reacts[r]=reacts[r].filter(x=>x!==me);
+
+if(reacts[r].length===0){
+delete reacts[r];
+}
+});
+
+if(!reacts[emoji]){
+reacts[emoji]=[];
+}
+
+reacts[emoji].push(me);
+
+await updateDoc(messageRef,{
+reactions:reacts
+});
+
+}
+
+});
+
+};
 
 window.sendMsg=async function(){
 let text=msgInput.value.trim();
@@ -678,9 +974,11 @@ from:me,
 to:currentChat,
 text:text,
 time:Date.now(),
-seen:false
+seen:false,
+reply:replyingMessage
 });
 msgInput.value="";
+cancelReply();
 update(ref(rtdb,"users/"+me),{online:true,typingTo:""});
 };
 
@@ -705,8 +1003,10 @@ from:me,
 to:currentChat,
 image:compressed,
 time:Date.now(),
-seen:false
+seen:false,
+reply:replyingMessage
 });
+cancelReply();
 galleryFile.value="";
 cameraFile.value="";
 };
@@ -719,6 +1019,94 @@ window.openImage=function(src){
 document.getElementById("imgViewer").classList.remove("hidden");
 document.getElementById("bigImg").src=src;
 };
+
+
+let activeBubble=null;
+let startX=0;
+let currentX=0;
+let dragging=false;
+
+document.addEventListener("touchstart",(e)=>{
+
+let bubble=e.target.closest(".msg");
+
+if(!bubble) return;
+
+activeBubble=bubble;
+startX=e.touches[0].clientX;
+dragging=true;
+
+bubble.style.transition="none";
+
+});
+
+document.addEventListener("touchmove",(e)=>{
+
+if(!dragging || !activeBubble) return;
+
+currentX=e.touches[0].clientX;
+
+let diff=currentX-startX;
+
+if(diff<0) diff=0;
+
+if(diff>120) diff=120;
+
+if(activeBubble.classList.contains("me")){
+activeBubble.style.transform=`translateX(${-diff}px)`;
+}else{
+activeBubble.style.transform=`translateX(${diff}px)`;
+}
+
+if(diff>70){
+activeBubble.style.opacity=".85";
+}else{
+activeBubble.style.opacity="1";
+}
+
+});
+
+document.addEventListener("touchend",()=>{
+
+if(!dragging || !activeBubble) return;
+
+let matrix=new WebKitCSSMatrix(
+window.getComputedStyle(activeBubble).transform
+);
+
+let movedX=matrix.m41;
+
+if(movedX>70){
+
+replyMessage(
+activeBubble.dataset.id,
+activeBubble.dataset.text
+);
+
+activeBubble.style.transition=".18s";
+if(activeBubble.classList.contains("me")){
+activeBubble.style.transform="translateX(-20px)";
+}else{
+activeBubble.style.transform="translateX(20px)";
+}
+
+setTimeout(()=>{
+activeBubble.style.transform="translateX(0)";
+activeBubble.style.opacity="1";
+},120);
+
+}else{
+
+activeBubble.style.transition=".25s";
+activeBubble.style.transform="translateX(0)";
+activeBubble.style.opacity="1";
+
+}
+
+dragging=false;
+activeBubble=null;
+
+});
 
 window.closeImage=function(){
 document.getElementById("imgViewer").classList.add("hidden");
