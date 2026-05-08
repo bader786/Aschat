@@ -653,9 +653,8 @@ const rtdb = getDatabase(app,"https://aschat-d0a6f-default-rtdb.asia-southeast1.
 let me="";
 let currentChat="";
 let unsubMessages=null;
-if("Notification" in window){
-Notification.requestPermission();
-}
+let notifiedMessages={};
+
 
 function roomId(a,b){
 return [a,b].sort().join("_");
@@ -664,6 +663,10 @@ return [a,b].sort().join("_");
 function notifyUser(title,message){
 
 if(me!=="Ahmed") return;
+
+if(document.visibilityState==="visible") return;
+
+if(!("Notification" in window)) return;
 
 if(Notification.permission!=="granted") return;
 
@@ -689,6 +692,9 @@ me=u;
 localStorage.setItem("aschat_user",u);
 myName.innerText=u;
 show("homePage");
+if(me==="Ahmed" && "Notification" in window){
+Notification.requestPermission();
+}
 setOnline();
 loadUsers();
 }else{
@@ -770,19 +776,15 @@ const q=query(collection(db,"chats",rid,"messages"),orderBy("time"));
 onSnapshot(q,(snap)=>{
 let count=0;
 snap.docs.forEach((docSnap)=>{
-let isFirstLoad=!window.loadedMessages;
 
-if(!window.loadedMessages){
-window.loadedMessages={};
-}
 
 
 let d=docSnap.data();
-
 if(
 d.to===me &&
 d.from!==me &&
-!window.loadedMessages[docSnap.id]
+!d.seen &&
+!notifiedMessages[docSnap.id]
 ){
 
 notifyUser(
@@ -790,9 +792,10 @@ d.from,
 d.text || "📷 Sent an image"
 );
 
+notifiedMessages[docSnap.id]=true;
 }
 
-window.loadedMessages[docSnap.id]=true;
+
 
 if(d.to===me && d.from===name && d.seen!==true){
 count++;
