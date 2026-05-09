@@ -676,6 +676,7 @@ myName.innerText=u;
 show("homePage");
 setOnline();
 loadUsers();
+listenForceLogout();
 }else{
 alert("Wrong login");
 }
@@ -695,6 +696,35 @@ setOffline();
 localStorage.removeItem("aschat_user");
 location.reload();
 };
+
+window.logoutEverywhere=async function(username){
+
+await update(
+ref(rtdb,"forceLogout/"+username),
+{
+time:Date.now()
+}
+);
+
+}
+
+function listenForceLogout(){
+
+onValue(ref(rtdb,"forceLogout/"+me),(snap)=>{
+
+if(snap.exists()){
+
+alert("Logged out from admin");
+
+localStorage.removeItem("aschat_user");
+
+location.reload();
+
+}
+
+});
+
+}
 
 function setOnline(){
 let r=ref(rtdb,"users/"+me);
