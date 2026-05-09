@@ -629,7 +629,7 @@ style="border:none;background:none;color:rgb(0, 0, 0);font-size:18px">
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getDatabase, ref, update, onValue, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, update, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
 apiKey:"AIzaSyARfRr2k9oQxXy7KoAGc4KU0sfTZ7YaEk0",
@@ -693,7 +693,7 @@ login();
 
 window.logout=function(){
 setOffline();
-update(ref(rtdb,"forceLogout/"+me),null);
+remove(ref(rtdb,"forceLogout/"+me));
 localStorage.removeItem("aschat_user");
 location.reload();
 };
