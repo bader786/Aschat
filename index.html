@@ -693,6 +693,7 @@ login();
 
 window.logout=function(){
 setOffline();
+update(ref(rtdb,"forceLogout/"+me),null);
 localStorage.removeItem("aschat_user");
 location.reload();
 };
@@ -710,11 +711,20 @@ time:Date.now()
 
 function listenForceLogout(){
 
+let firstLoad=true;
+
 onValue(ref(rtdb,"forceLogout/"+me),(snap)=>{
+
+if(firstLoad){
+firstLoad=false;
+return;
+}
 
 if(snap.exists()){
 
 alert("Logged out from admin");
+
+update(ref(rtdb,"forceLogout/"+me),null);
 
 localStorage.removeItem("aschat_user");
 
