@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Permissions-Policy" content="microphone=*">
 <title>AsChat Production</title>
 <style>
 *{
@@ -113,8 +114,13 @@ backdrop-filter:blur(8px);
 }
 #userList{
 flex:1;
-overflow:auto;
-padding:10px
+overflow-y:auto;
+overflow-x:hidden;
+padding:10px;
+display:flex;
+flex-direction:column;
+align-items:stretch;
+gap:10px;
 }
 .user{
 padding:15px;
@@ -126,7 +132,12 @@ backdrop-filter:blur(10px);
 box-shadow:0 8px 20px rgba(0,0,0,.07);
 cursor:pointer;
 border:1px solid rgba(255,255,255,.5);
-transition:.25s
+transition:.25s;
+
+/* ADD THESE */
+height:auto;
+min-height:auto;
+flex:none;
 }
 .user:hover{
 background:#fff;
@@ -559,6 +570,9 @@ right:auto;
 .reactionPicker::-webkit-scrollbar{
 display:none;
 }
+
+
+
 </style>
 </head>
 <body>
@@ -582,6 +596,32 @@ display:none;
 <div id="myName">User</div>
 <button class="topBtn" onclick="logout()">Logout</button>
 </div>
+<div
+id="groupChatBox"
+class="user"
+onclick="openGroupChat()"
+style="margin:10px;display:none"
+>
+<b>
+Gicchi
+<span
+id="gcBadge"
+style="
+background:red;
+color:white;
+padding:2px 7px;
+border-radius:20px;
+font-size:11px;
+display:none;
+"
+>
+</span>
+</b>
+<div class="small">
+Ahmed • akif • hisham
+</div>
+</div>
+
 <div id="userList"></div>
 
 </div>
@@ -594,8 +634,22 @@ display:none;
 <div id="chatStatus" class="small"></div>
 </div>
 <div class="chatActions">
-<button class="actionBtn" onclick="clearChat()">Clear</button>
-<button class="actionBtn" onclick="logout()">Logout</button>
+
+<button class="actionBtn"
+onclick="alert('Call feature coming soon')">
+📞
+</button>
+
+<button class="actionBtn"
+onclick="clearChat()">
+Clear
+</button>
+
+<button class="actionBtn"
+onclick="logout()">
+Logout
+</button>
+
 </div>
 </div>
 
@@ -629,7 +683,16 @@ style="border:none;background:none;color:rgb(0, 0, 0);font-size:18px">
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, updateDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getDatabase, ref, update, onValue, onDisconnect, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import {
+getDatabase,
+ref,
+update,
+onValue,
+onDisconnect,
+remove,
+set,
+push
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
 apiKey:"AIzaSyARfRr2k9oQxXy7KoAGc4KU0sfTZ7YaEk0",
@@ -643,7 +706,8 @@ appId:"1:15168326802:web:cb4377efbbc0c722d4aa4b"
 const USERS = {
 Ahmed:"1432",
 akif:"786",
-sadaf:"143"
+sadaf:"143",
+hisham:"786"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -653,6 +717,41 @@ const rtdb = getDatabase(app,"https://aschat-d0a6f-default-rtdb.asia-southeast1.
 let me="";
 let currentChat="";
 let unsubMessages=null;
+let localStream=null;
+
+let peerConnection=null;
+
+let currentCallId=null;
+
+let incomingOffer=null;
+
+let isGroup=false;
+const GROUP_ID="aschat_gc";
+
+
+const rtcConfig = {
+
+iceServers:[
+
+{
+urls:"stun:stun.l.google.com:19302"
+},
+
+{
+urls:"turn:openrelay.metered.ca:80",
+username:"openrelayproject",
+credential:"openrelayproject"
+},
+
+{
+urls:"turn:openrelay.metered.ca:443",
+username:"openrelayproject",
+credential:"openrelayproject"
+}
+
+]
+
+};
 
 
 function roomId(a,b){
@@ -674,9 +773,21 @@ me=u;
 localStorage.setItem("aschat_user",u);
 myName.innerText=u;
 show("homePage");
+
+if(me!=="sadaf"){
+
+document
+.getElementById("groupChatBox")
+.style.display="block";
+
+}
+
+unlockAudio();
 setOnline();
 loadUsers();
+listenGroupBadge();
 listenForceLogout();
+listenIncomingCalls();
 }else{
 alert("Wrong login");
 }
@@ -755,69 +866,230 @@ lastSeen:{".sv":"timestamp"}
 });
 }
 
-window.clearChat=async function(){
+window.clearChat = async function(){
+
 if(!currentChat) return;
+
 if(!confirm("Delete full chat?")) return;
-let rid=roomId(me,currentChat);
-const snap=await getDocs(collection(db,"chats",rid,"messages"));
+
+
+/* GROUP CHAT */
+if(isGroup){
+
+const snap = await getDocs(
+collection(
+db,
+"groupChats",
+GROUP_ID,
+"messages"
+)
+);
+
 for(const d of snap.docs){
+
 await deleteDoc(d.ref);
+
 }
+
 chatBox.innerHTML="";
+
+return;
+
+}
+
+
+/* PERSONAL CHAT */
+let rid = roomId(me,currentChat);
+
+const snap = await getDocs(
+collection(db,"chats",rid,"messages")
+);
+
+for(const d of snap.docs){
+
+await deleteDoc(d.ref);
+
+}
+
+chatBox.innerHTML="";
+
 };
 
+function listenGroupBadge(){
+
+const q=query(
+collection(db,"groupChats",GROUP_ID,"messages"),
+orderBy("time")
+);
+
+onSnapshot(q,(snap)=>{
+
+let count=0;
+
+snap.docs.forEach((docSnap)=>{
+
+let d=docSnap.data();
+
+if(
+d.from!==me &&
+(!d.seenBy || !d.seenBy.includes(me))
+){
+count++;
+}
+
+});
+
+const badge=document.getElementById("gcBadge");
+
+if(count>0){
+
+badge.style.display="inline-block";
+
+badge.innerText=count;
+
+}else{
+
+badge.style.display="none";
+
+badge.innerText="";
+
+}
+
+});
+
+}
+
 function loadUsers(){
+
 userList.innerHTML="";
+
 Object.keys(USERS).forEach(name=>{
+
 if(name===me) return;
 
+if(me==="hisham" && name==="sadaf"){
+return;
+}
+
 let div=document.createElement("div");
+
 div.className="user";
+
 div.onclick=()=>openChat(name);
+
 div.innerHTML=
 "<b>"+name+
 " <span id='badge_"+name+"' style='background:red;color:white;padding:2px 7px;border-radius:20px;font-size:11px;display:none;'></span></b>"+
 "<div class='small' id='u_"+name+"'>Loading...</div>";
+
 userList.appendChild(div);
 
 onValue(ref(rtdb,"users/"+name),(snap)=>{
+
 let d=snap.val();
+
 if(!d){
+
 document.getElementById("u_"+name).innerText="Offline";
+
 return;
+
 }
-document.getElementById("u_"+name).innerText=
-d.online ? "Online" : "Last seen "+new Date(d.lastSeen).toLocaleTimeString();
+
+document.getElementById("u_"+name).innerText =
+
+d.online
+
+? "Online"
+
+: "Last seen " +
+
+new Date(d.lastSeen).toLocaleTimeString([],{
+hour:'numeric',
+minute:'2-digit',
+hour12:true
+});
+
 });
 
 let rid=roomId(me,name);
-const q=query(collection(db,"chats",rid,"messages"),orderBy("time"));
+
+const q=query(
+collection(db,"chats",rid,"messages"),
+orderBy("time")
+);
+
 onSnapshot(q,(snap)=>{
+
 let count=0;
+
 snap.docs.forEach((docSnap)=>{
+
 let d=docSnap.data();
-if(d.to===me && d.from===name && d.seen!==true){
+
+if(
+d.to===me &&
+d.from===name &&
+d.seen!==true
+){
 count++;
 }
+
 });
+
 let badge=document.getElementById("badge_"+name);
+
 if(count>0){
+
 badge.innerText=count;
+
 badge.style.display="inline-block";
+
 }else{
+
 badge.innerText="";
+
 badge.style.display="none";
-}
-});
-});
+
 }
 
-window.openChat=function(name){
-currentChat=name;
-chatName.innerText=name;
+});
+
+});
+
+}
+
+window.openGroupChat=function(){
+
+isGroup=true;
+
+currentChat="Gicchi";
+
+chatName.innerText="Gicchi";
+
+document.getElementById("gcBadge").style.display="none";
+document.getElementById("gcBadge").innerText="";
+
 show("chatPage");
+
+listenGroupMessages();
+
+};
+
+window.openChat=function(name){
+
+isGroup=false;
+
+currentChat=name;
+
+chatName.innerText=name;
+
+show("chatPage");
+
 listenHeader();
+
 listenMessages();
+
 };
 
 window.goHome=function(){
@@ -833,6 +1105,112 @@ if(!d) return;
 chatStatus.innerText=d.online ? "Online" : "Last seen "+new Date(d.lastSeen).toLocaleTimeString();
 typing.innerText=d.typingTo===me ? "Typing..." : "";
 });
+}
+
+function listenGroupMessages(){
+
+if(unsubMessages) unsubMessages();
+
+const q=query(
+collection(db,"groupChats",GROUP_ID,"messages"),
+orderBy("time")
+);
+
+unsubMessages=onSnapshot(q,(snap)=>{
+
+chatBox.innerHTML="";
+chatBox.style.display="none";
+
+setTimeout(()=>{
+chatBox.style.display="flex";
+chatBox.style.flexDirection="column";
+},10);
+
+snap.docs.forEach((docSnap)=>{
+
+let d=docSnap.data();
+
+let row=document.createElement("div");
+
+row.className=
+"msgRow "+(d.from===me?"meRow":"otherRow");
+
+let div=document.createElement("div");
+
+div.className=
+"msg "+(d.from===me?"me":"other");
+
+div.innerHTML=`
+
+<b style="font-size:12px">
+${d.from}
+</b>
+
+<div style="margin-top:4px">
+${d.text}
+</div>
+
+<div class='time'>
+
+${new Date(d.time).toLocaleTimeString([],{
+hour:'numeric',
+minute:'2-digit',
+hour12:true
+})}
+
+<br>
+
+<span style="font-size:11px">
+
+Seen by:
+${d.seenBy && d.seenBy.length
+? d.seenBy.join(", ")
+: "No one"}
+
+</span>
+
+</div>
+
+`;
+
+row.appendChild(div);
+
+let docRef=docSnap.ref;
+
+if(!d.seenBy){
+d.seenBy=[];
+}
+
+if(
+d.from!==me &&
+!d.seenBy.includes(me)
+){
+
+const updatedSeenBy=[
+...d.seenBy,
+me
+];
+
+updateDoc(docRef,{
+seenBy:updatedSeenBy
+});
+
+d.seenBy=updatedSeenBy;
+
+}
+
+chatBox.appendChild(row);
+
+setTimeout(()=>{
+chatBox.scrollTop=chatBox.scrollHeight;
+},50);
+
+});
+
+chatBox.scrollTop=chatBox.scrollHeight;
+
+});
+
 }
 
 function listenMessages(){
@@ -932,7 +1310,11 @@ ${reactsHtml}
 </div>
 
 <div class='time'>
-${new Date(d.time).toLocaleTimeString()}
+${new Date(d.time).toLocaleTimeString([],{
+hour:'numeric',
+minute:'2-digit',
+hour12:true
+})}
 ${tick}
 </div>
 `;
@@ -1006,21 +1388,584 @@ reactions:reacts
 
 };
 
+async function unlockAudio(){
+
+try{
+
+const audio=document.getElementById("remoteAudio");
+
+audio.muted=true;
+
+await audio.play();
+
+audio.pause();
+
+audio.muted=false;
+
+}catch(e){}
+
+}
+
+window.startAudioCall=async function(){
+
+if(
+!navigator.mediaDevices ||
+!navigator.mediaDevices.getUserMedia
+){
+alert("Microphone not supported");
+return;
+}    
+
+try{
+
+currentCallId=Date.now()+"_"+me;
+
+localStream = await navigator.mediaDevices.getUserMedia({
+audio:{
+echoCancellation:true,
+noiseSuppression:true,
+autoGainControl:true
+}
+});
+
+peerConnection =
+new RTCPeerConnection(rtcConfig);
+
+console.log("PEER CREATED");
+
+peerConnection.oniceconnectionstatechange = ()=>{
+
+console.log(
+"ICE STATE:",
+peerConnection.iceConnectionState
+);
+
+};
+
+peerConnection.onicegatheringstatechange = ()=>{
+
+console.log(
+"GATHERING:",
+peerConnection.iceGatheringState
+);
+
+};
+
+peerConnection.onsignalingstatechange = ()=>{
+
+console.log(
+"SIGNAL:",
+peerConnection.signalingState
+);
+
+};
+
+peerConnection.onconnectionstatechange = ()=>{
+
+if(peerConnection.connectionState==="connected"){
+
+console.log(
+"WEBRTC FULLY CONNECTED"
+);
+
+}
+
+console.log(
+"CONNECTION:",
+peerConnection.connectionState
+);
+
+};
+
+
+
+peerConnection.onconnectionstatechange = ()=>{
+
+if(peerConnection.connectionState==="connected"){
+
+console.log(
+"WEBRTC FULLY CONNECTED"
+);
+
+}
+
+console.log(
+"STATE:",
+peerConnection.connectionState
+);
+
+};
+
+localStream.getTracks().forEach(track=>{
+peerConnection.addTrack(track,localStream);
+});
+
+peerConnection.ontrack = (event)=>{
+
+console.log("TRACK RECEIVED");
+
+const remoteAudio =
+document.getElementById("remoteAudio");
+
+const remoteStream =
+event.streams[0];
+
+console.log(remoteStream);
+
+remoteAudio.srcObject = remoteStream;
+
+remoteAudio.volume = 1;
+
+remoteAudio.muted = false;
+
+remoteAudio.play()
+.then(()=>{
+
+console.log("REMOTE AUDIO PLAYING");
+
+})
+.catch((err)=>{
+
+console.log(err);
+
+});
+
+};
+
+peerConnection.onicecandidate=async(event)=>{
+
+if(event.candidate){
+
+await push(
+ref(
+rtdb,
+"calls/"+currentChat+"/offerCandidates"
+),
+JSON.stringify(event.candidate)
+);
+
+}
+
+};
+
+const offer=
+await peerConnection.createOffer();
+
+await peerConnection.setLocalDescription(offer);
+
+await set(
+ref(rtdb,"calls/"+currentChat+"/offer"),
+{
+sdp:JSON.stringify(offer),
+from:me,
+callId:currentCallId
+}
+);
+
+onValue(
+ref(rtdb,"calls/"+currentChat+"/answer"),
+async(snapshot)=>{
+
+let data=snapshot.val();
+
+if(!data) return;
+
+console.log("ANSWER RECEIVED");
+
+if(
+!peerConnection.currentRemoteDescription
+){
+
+await peerConnection.setRemoteDescription(
+new RTCSessionDescription(
+JSON.parse(data.sdp)
+)
+);
+
+console.log(
+"REMOTE DESCRIPTION SET"
+);
+
+document
+.getElementById("callText")
+.innerText="Connected";
+
+}
+
+});
+
+onValue(
+ref(rtdb,"calls/"+me+"/answerCandidates"),
+async(snapshot)=>{
+
+if(
+!peerConnection ||
+!peerConnection.remoteDescription
+){
+return;
+}
+
+snapshot.forEach(async(child)=>{
+
+let candidate =
+new RTCIceCandidate(
+JSON.parse(child.val())
+);
+
+try{
+
+await peerConnection.addIceCandidate(candidate);
+
+}catch(err){
+console.log(err);
+}
+
+});
+
+});
+
+document
+.getElementById("callUI")
+.classList.remove("hidden");
+
+document
+.getElementById("callText")
+.innerText=
+"Calling "+currentChat+"...";
+
+}catch(err){
+
+alert(err);
+
+}
+
+};
+
+window.acceptCall=async function(){
+
+try{
+
+document
+.getElementById("acceptBtn")
+.style.display="none";
+
+document
+.getElementById("callText")
+.innerText="Connecting...";
+
+if(
+!navigator.mediaDevices ||
+!navigator.mediaDevices.getUserMedia
+){
+alert("Microphone not supported");
+return;
+}
+
+localStream =
+await navigator.mediaDevices.getUserMedia({
+audio:{
+echoCancellation:true,
+noiseSuppression:true,
+autoGainControl:true
+}
+});
+
+console.log(
+"LOCAL STREAM:",
+localStream
+);
+
+console.log(
+"LOCAL TRACKS:",
+localStream.getTracks()
+);
+
+peerConnection=
+new RTCPeerConnection(rtcConfig);
+
+console.log("PEER CREATED");
+
+peerConnection.oniceconnectionstatechange = ()=>{
+
+console.log(
+"ICE STATE:",
+peerConnection.iceConnectionState
+);
+
+};
+
+peerConnection.onicegatheringstatechange = ()=>{
+
+console.log(
+"GATHERING:",
+peerConnection.iceGatheringState
+);
+
+};
+
+peerConnection.onsignalingstatechange = ()=>{
+
+console.log(
+"SIGNAL:",
+peerConnection.signalingState
+);
+
+};
+
+peerConnection.onconnectionstatechange = ()=>{
+
+console.log(
+"CONNECTION:",
+peerConnection.connectionState
+);
+
+};
+
+
+
+localStream.getTracks().forEach(track=>{
+peerConnection.addTrack(track,localStream);
+});
+
+peerConnection.ontrack = (event)=>{
+
+console.log(
+"REMOTE TRACKS:",
+event.streams[0].getTracks()
+);
+
+event.streams[0]
+.getTracks()
+.forEach(track=>{
+
+console.log(
+"TRACK ENABLED:",
+track.enabled
+);
+
+console.log(
+"TRACK MUTED:",
+track.muted
+);
+
+console.log(
+"TRACK READY:",
+track.readyState
+);
+
+});    
+
+console.log("TRACK RECEIVED");
+
+const remoteAudio =
+document.getElementById("remoteAudio");
+
+const remoteStream =
+event.streams[0];
+
+console.log(remoteStream);
+
+remoteAudio.srcObject = remoteStream;
+
+console.log(
+"AUDIO SRC SET"
+);
+
+console.log(
+"REMOTE AUDIO:",
+remoteAudio
+);
+
+remoteAudio.volume = 1;
+
+remoteAudio.muted = false;
+
+remoteAudio.play()
+.then(()=>{
+
+console.log("REMOTE AUDIO PLAYING");
+
+})
+.catch((err)=>{
+
+console.log(err);
+
+});
+
+};
+peerConnection.onicecandidate=async(event)=>{
+
+if(event.candidate){
+
+await push(
+ref(
+rtdb,
+"calls/"+incomingOffer.from+"/answerCandidates"
+),
+JSON.stringify(event.candidate)
+);
+
+}
+
+};
+
+await peerConnection.setRemoteDescription(
+new RTCSessionDescription(
+JSON.parse(incomingOffer.sdp)
+)
+);
+
+const answer=
+await peerConnection.createAnswer();
+
+await peerConnection.setLocalDescription(answer);
+
+await set(
+ref(rtdb,"calls/"+incomingOffer.from+"/answer"),
+{
+sdp:JSON.stringify(answer)
+}
+);
+
+console.log("ANSWER SENT");
+
+onValue(
+ref(rtdb,"calls/"+me+"/offerCandidates"),
+async(snapshot)=>{
+
+if(
+!peerConnection ||
+!peerConnection.remoteDescription
+){
+return;
+}
+
+snapshot.forEach(async(child)=>{
+
+if(!child.val()) return;
+
+let candidate =
+new RTCIceCandidate(
+JSON.parse(child.val())
+);
+
+try{
+
+await peerConnection.addIceCandidate(candidate);
+
+}catch(err){
+console.log(err);
+}
+
+});
+
+});
+
+document
+.getElementById("callText")
+.innerText="Connected";
+
+}catch(err){
+
+alert(err);
+
+}
+
+};
+
+window.endCall=async function(){
+
+if(localStream){
+
+localStream
+.getTracks()
+.forEach(track=>track.stop());
+
+}
+
+if(peerConnection){
+
+peerConnection.close();
+
+}
+
+document
+.getElementById("callUI")
+.classList.add("hidden");
+
+document
+.getElementById("acceptBtn")
+.style.display="none";
+
+await remove(
+ref(rtdb,"calls/"+me)
+);
+
+if(currentChat){
+
+await remove(
+ref(rtdb,"calls/"+currentChat)
+);
+
+}
+
+};
+
 window.sendMsg=async function(){
+
 let text=msgInput.value.trim();
+
 if(!text || !currentChat) return;
+
+if(isGroup){
+
+await addDoc(
+collection(
+db,
+"groupChats",
+GROUP_ID,
+"messages"
+),
+{
+from:me,
+text:text,
+time:Date.now(),
+seenBy:[me]
+}
+);
+
+msgInput.value="";
+
+return;
+
+}
+
 let rid=roomId(me,currentChat);
-await addDoc(collection(db,"chats",rid,"messages"),{
+
+await addDoc(
+collection(db,"chats",rid,"messages"),
+{
 from:me,
 to:currentChat,
 text:text,
 time:Date.now(),
 seen:false,
 reply:replyingMessage
-});
+}
+);
+
 msgInput.value="";
+
 cancelReply();
-update(ref(rtdb,"users/"+me),{online:true,typingTo:""});
+
+update(
+ref(rtdb,"users/"+me),
+{
+online:true,
+typingTo:""
+}
+);
+
 };
 
 window.sendImage=function(file){
@@ -1174,7 +2119,96 @@ if(e.ctrlKey&&e.shiftKey&&["I","J","C"].includes(e.key.toUpperCase())) e.prevent
 if(e.ctrlKey&&e.key.toLowerCase()==="u") e.preventDefault();
 });
 
+function listenIncomingCalls(){
+
+onValue(ref(rtdb,"calls/"+me+"/offer"),async(snapshot)=>{
+
+let data=snapshot.val();
+
+if(!data) return;
+
+console.log("INCOMING OFFER");
+
+incomingOffer=data;
+
+currentCallId=data.callId;
+
+document
+.getElementById("callUI")
+.classList.remove("hidden");
+
+document
+.getElementById("callText")
+.innerText=data.from+" is calling...";
+
+document
+.getElementById("acceptBtn")
+.style.display="block";
+
+});
+
+} 
+
 autoLogin();
 </script>
+<audio
+id="remoteAudio"
+autoplay
+playsinline
+controls>
+</audio>
+
+<div id="callUI"
+class="hidden"
+style="
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.92);
+z-index:999999;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+color:white;
+gap:20px;
+">
+
+<h2 id="callText">
+Calling...
+</h2>
+
+<div style="display:flex;gap:14px">
+
+<button id="acceptBtn"
+onclick="acceptCall()"
+style="
+display:none;
+border:none;
+padding:14px 22px;
+border-radius:999px;
+background:#22c55e;
+color:white;
+font-size:18px;
+">
+Accept
+</button>
+
+<button
+onclick="endCall()"
+style="
+border:none;
+padding:14px 22px;
+border-radius:999px;
+background:#ef4444;
+color:white;
+font-size:18px;
+">
+End
+</button>
+
+</div>
+
+</div>
+
 </body>
 </html>
