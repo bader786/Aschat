@@ -611,11 +611,149 @@ background:#334155 !important;
 color:white !important;
 }
 
+
+/* --- Modern Custom Dialog Styles --- */
+#customAlertOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 100000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+#customAlertOverlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.alertBox {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 24px;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: center;
+}
+
+#customAlertOverlay.active .alertBox {
+  transform: translateY(0) scale(1);
+}
+
+.alertIcon {
+  font-size: 38px;
+  margin-bottom: 12px;
+}
+
+.alertBox h3 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 10px;
+}
+
+.alertBox p {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.alertActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.alertBtn {
+  flex: 1;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.alertBtn-cancel {
+  background: rgba(0, 0, 0, 0.05);
+  color: #475569;
+}
+
+.alertBtn-cancel:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.alertBtn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.25);
+}
+
+.alertBtn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+}
+
+/* Dark Theme Adaptations */
+.dark #customAlertOverlay {
+  background: rgba(2, 6, 23, 0.7);
+}
+
+.dark .alertBox {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+.dark .alertBox h3 {
+  color: #f8fafc;
+}
+
+.dark .alertBox p {
+  color: #94a3b8;
+}
+
+.dark .alertBtn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.dark .alertBtn-cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
 </style>
 </head>
 <body>
 
+    <div id="customAlertOverlay">
+  <div class="alertBox">
+    <div class="alertIcon" id="customAlertIcon">⚠️</div>
+    <h3 id="customAlertTitle">Clear Chat History</h3>
+    <p id="customAlertMessage">Are you sure you want to clear this chat? This action cannot be undone.</p>
+    <div class="alertActions">
+      <button class="alertBtn alertBtn-cancel" id="customAlertCancelBtn" onclick="closeCustomConfirm(false)">Cancel</button>
+      <button class="alertBtn alertBtn-danger" id="customAlertConfirmBtn" onclick="closeCustomConfirm(true)">Clear Chat</button>
+    </div>
+  </div>
+</div>
+
 <div id="imgViewer" class="hidden">
+
 <button onclick="closeImage()">✕</button>
 <img id="bigImg">
 </div>
@@ -752,14 +890,18 @@ akif:"786",
 sadaf:"143",
 hisham:"786",
 tajammul:"786",
-afsheen:"786"
+afsheen:"786",
+AsChatSupport:"support"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const rtdb = getDatabase(app,"https://aschat-d0a6f-default-rtdb.asia-southeast1.firebasedatabase.app");
 
+
+
 let me="";
+let afsheenAttempts = 0;
+let afsheenLocked = false;
 localStorage.removeItem("aschat_user");
 let currentChat="";
 let unsubMessages=null;
@@ -769,7 +911,60 @@ let peerConnection=null;
 
 let currentCallId=null;
 
+
 let incomingOffer=null;
+
+let customConfirmResolver = null;
+
+function showCustomConfirm({
+title,
+message,
+icon,
+confirmText
+}){
+
+document.getElementById(
+"customAlertTitle"
+).innerText=title;
+
+document.getElementById(
+"customAlertMessage"
+).innerText=message;
+
+document.getElementById(
+"customAlertIcon"
+).innerText=icon || "⚠️";
+
+document.getElementById(
+"customAlertConfirmBtn"
+).innerText=confirmText || "Confirm";
+
+document
+.getElementById("customAlertOverlay")
+.classList.add("active");
+
+return new Promise((resolve)=>{
+customConfirmResolver=resolve;
+});
+
+}
+
+window.closeCustomConfirm=function(value){
+
+document
+.getElementById("customAlertOverlay")
+.classList.remove("active");
+
+if(customConfirmResolver){
+
+customConfirmResolver(value);
+
+customConfirmResolver=null;
+
+}
+
+};
+
 
 let isGroup=false;
 const GROUP_ID="aschat_gc";
@@ -811,7 +1006,14 @@ chatPage.classList.add("hidden");
 document.getElementById(page).classList.remove("hidden");
 }
 
-window.login=function(){
+window.login=async function(){
+if(
+username.value.trim()==="afsheen" &&
+afsheenLocked
+){
+alert("Afsheen account is locked.");
+return;
+}
 let u=username.value.trim();
 let p=password.value.trim();
 if(USERS[u] && USERS[u]===p){
@@ -846,7 +1048,43 @@ listenGroupBadge();
 listenForceLogout();
 listenIncomingCalls();
 }else{
+
+if(u==="afsheen"){
+
+afsheenAttempts++;
+
+if(afsheenAttempts>=3){
+
+afsheenLocked=true;
+
+let rid = roomId("tajammul","AsChatSupport");
+
+await addDoc(
+collection(db,"chats",rid,"messages"),
+{
+from:"AsChatSupport",
+to:"tajammul",
+text:"The Afsheen account has been locked after 3 incorrect password attempts. Reply YES to unlock the account or NO to keep it locked.",
+time:Date.now(),
+seen:false
+}
+);
+
+alert("Afsheen account locked.");
+
+return;
+}
+
+alert(
+"Wrong password. Attempts left: "+
+(3-afsheenAttempts)
+);
+
+return;
+}
+
 alert("Wrong login");
+
 }
 };
 
@@ -916,62 +1154,46 @@ lastSeen:{".sv":"timestamp"}
 });
 }
 
-window.clearChat = async function(){
+// Refactored sleek asynchronous clearChat function
+window.clearChat = async function() {
+  if (me === "afsheen") {
+    alert("You are not allowed to clear chats.");
+    return;
+  }
 
-    if(me==="afsheen"){
-alert("You are not allowed to clear chats.");
-return;
-}
+  if (!currentChat) return;
 
-if(!currentChat) return;
+  // Await sleek dialog response instead of blocking native window popups
+  const confirmed = await showCustomConfirm({
+    title: "Clear Chat History?",
+    message: "Are you sure you want to clear this conversation? This configuration removes all text entries permanently.",
+    icon: "🗑️",
+    confirmText: "Yes, Delete"
+  });
 
-if(
-!confirm(
-"⚠️ Are you sure you want to clear this chat?\n\nThis action cannot be undone."
-)
-) return;
+  if (!confirmed) return;
 
+  /* GROUP CHAT PIPELINE */
+  if (isGroup) {
+    const snap = await getDocs(
+      collection(db, "groupChats", GROUP_ID, "messages")
+    );
+    for (const d of snap.docs) {
+      await deleteDoc(d.ref);
+    }
+    chatBox.innerHTML = "";
+    return;
+  }
 
-/* GROUP CHAT */
-if(isGroup){
-
-const snap = await getDocs(
-collection(
-db,
-"groupChats",
-GROUP_ID,
-"messages"
-)
-);
-
-for(const d of snap.docs){
-
-await deleteDoc(d.ref);
-
-}
-
-chatBox.innerHTML="";
-
-return;
-
-}
-
-
-/* PERSONAL CHAT */
-let rid = roomId(me,currentChat);
-
-const snap = await getDocs(
-collection(db,"chats",rid,"messages")
-);
-
-for(const d of snap.docs){
-
-await deleteDoc(d.ref);
-
-}
-
-chatBox.innerHTML="";
-
+  /* PERSONAL CHAT PIPELINE */
+  let rid = roomId(me, currentChat);
+  const snap = await getDocs(
+    collection(db, "chats", rid, "messages")
+  );
+  for (const d of snap.docs) {
+    await deleteDoc(d.ref);
+  }
+  chatBox.innerHTML = "";
 };
 
 function listenGroupBadge(){
@@ -1025,13 +1247,20 @@ userList.innerHTML="";
 Object.keys(USERS).forEach(name=>{
 
 if(name===me) return;
+if(
+name==="AsChatSupport" &&
+me!=="tajammul"
+){
+return;
+}
 
 if(me==="tajammul"){
 
 if(
 name!=="Ahmed" &&
 name!=="sadaf" &&
-name!=="afsheen"
+name!=="afsheen" &&
+name!=="AsChatSupport"
 ){
 return;
 }
@@ -1050,17 +1279,7 @@ return;
 
 }
 
-if(me==="tajammul"){
 
-if(
-name!=="Ahmed" &&
-name!=="sadaf" &&
-name!=="afsheen"
-){
-return;
-}
-
-}
 
 if(me==="afsheen"){
 
@@ -1147,7 +1366,7 @@ let d=docSnap.data();
 
 if(
 d.to===me &&
-d.from===name &&
+(d.from===name || d.from==="AsChatSupport") &&
 d.seen!==true
 ){
 count++;
@@ -2041,6 +2260,59 @@ ref(rtdb,"calls/"+currentChat)
 window.sendMsg=async function(){
 
 let text=msgInput.value.trim();
+if(
+me==="tajammul" &&
+currentChat==="AsChatSupport"
+){
+
+let reply=text.trim().toUpperCase();
+
+if(reply==="YES"){
+
+afsheenLocked=false;
+
+await addDoc(
+collection(
+db,
+"chats",
+roomId("tajammul","AsChatSupport"),
+"messages"
+),
+{
+from:"AsChatSupport",
+to:"tajammul",
+text:"Thank you. The Afsheen account has been unlocked.",
+time:Date.now(),
+seen:false
+}
+);
+
+msgInput.value="";
+return;
+}
+
+else if(reply==="NO"){
+
+await addDoc(
+collection(
+db,
+"chats",
+roomId("tajammul","AsChatSupport"),
+"messages"
+),
+{
+from:"AsChatSupport",
+to:"tajammul",
+text:"Thank you. The Afsheen account will remain locked.",
+time:Date.now(),
+seen:false
+}
+);
+msgInput.value="";
+return;
+}
+
+}
 
 if(!text || !currentChat) return;
 
