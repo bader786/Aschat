@@ -571,7 +571,45 @@ right:auto;
 display:none;
 }
 
+.dark{
+background:#0f172a !important;
+}
 
+.dark .page{
+background:#0f172a !important;
+}
+
+.dark #chatBox{
+background:#111827 !important;
+}
+
+.dark .user{
+background:#1e293b !important;
+color:white;
+}
+
+.dark .small{
+color:#cbd5e1 !important;
+}
+
+.dark .bottomWrap{
+background:#1e293b !important;
+}
+
+.dark #msgInput{
+background:#334155 !important;
+color:white;
+}
+
+.dark #typing{
+background:#1e293b !important;
+color:white !important;
+}
+
+.dark .replyPreview{
+background:#334155 !important;
+color:white !important;
+}
 
 </style>
 </head>
@@ -594,7 +632,10 @@ display:none;
 <div id="homePage" class="page hidden">
 <div class="topbar">
 <div id="myName">User</div>
+<div style="display:flex;gap:8px">
+<button class="topBtn" id="themeBtn">𖤓</button>
 <button class="topBtn" onclick="logout()">Logout</button>
+</div>
 </div>
 <div
 id="groupChatBox"
@@ -640,7 +681,9 @@ onclick="alert('Call feature coming soon')">
 📞
 </button>
 
-<button class="actionBtn"
+<button
+id="clearBtn"
+class="actionBtn"
 onclick="clearChat()">
 Clear
 </button>
@@ -707,7 +750,9 @@ const USERS = {
 Ahmed:"1432",
 akif:"786",
 sadaf:"143",
-hisham:"786"
+hisham:"786",
+tajammul:"786",
+afsheen:"786"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -715,6 +760,7 @@ const db = getFirestore(app);
 const rtdb = getDatabase(app,"https://aschat-d0a6f-default-rtdb.asia-southeast1.firebasedatabase.app");
 
 let me="";
+localStorage.removeItem("aschat_user");
 let currentChat="";
 let unsubMessages=null;
 let localStream=null;
@@ -770,11 +816,22 @@ let u=username.value.trim();
 let p=password.value.trim();
 if(USERS[u] && USERS[u]===p){
 me=u;
-localStorage.setItem("aschat_user",u);
+
 myName.innerText=u;
+
+if(me==="afsheen"){
+document.getElementById("clearBtn").style.display="none";
+}else{
+document.getElementById("clearBtn").style.display="flex";
+}
+
 show("homePage");
 
-if(me!=="sadaf"){
+if(
+me!=="sadaf" &&
+me!=="tajammul" &&
+me!=="afsheen"
+){
 
 document
 .getElementById("groupChatBox")
@@ -793,19 +850,12 @@ alert("Wrong login");
 }
 };
 
-function autoLogin(){
-let saved=localStorage.getItem("aschat_user");
-if(saved && USERS[saved]){
-username.value=saved;
-password.value=USERS[saved];
-login();
-}
-}
+
 
 window.logout=function(){
 setOffline();
 remove(ref(rtdb,"forceLogout/"+me));
-localStorage.removeItem("aschat_user");
+
 location.reload();
 };
 
@@ -868,9 +918,18 @@ lastSeen:{".sv":"timestamp"}
 
 window.clearChat = async function(){
 
+    if(me==="afsheen"){
+alert("You are not allowed to clear chats.");
+return;
+}
+
 if(!currentChat) return;
 
-if(!confirm("Delete full chat?")) return;
+if(
+!confirm(
+"⚠️ Are you sure you want to clear this chat?\n\nThis action cannot be undone."
+)
+) return;
 
 
 /* GROUP CHAT */
@@ -967,6 +1026,62 @@ Object.keys(USERS).forEach(name=>{
 
 if(name===me) return;
 
+if(me==="tajammul"){
+
+if(
+name!=="Ahmed" &&
+name!=="sadaf" &&
+name!=="afsheen"
+){
+return;
+}
+
+}
+
+if(me==="afsheen"){
+
+if(
+name!=="Ahmed" &&
+name!=="sadaf" &&
+name!=="tajammul"
+){
+return;
+}
+
+}
+
+if(me==="tajammul"){
+
+if(
+name!=="Ahmed" &&
+name!=="sadaf" &&
+name!=="afsheen"
+){
+return;
+}
+
+}
+
+if(me==="afsheen"){
+
+if(
+name!=="Ahmed" &&
+name!=="sadaf" &&
+name!=="tajammul"
+){
+return;
+}
+
+}
+/* Ahmed & Sadaf can see Tajammul and Afsheen */
+if(
+(me==="Ahmed" || me==="sadaf") &&
+(name==="akif" || name==="hisham")
+){
+/* keep existing visibility */
+}
+
+/* Existing rule */
 if(me==="hisham" && name==="sadaf"){
 return;
 }
@@ -1004,7 +1119,10 @@ d.online
 
 : "Last seen " +
 
-new Date(d.lastSeen).toLocaleTimeString([],{
+new Date(d.lastSeen).toLocaleString([],{
+day:'2-digit',
+month:'2-digit',
+year:'numeric',
 hour:'numeric',
 minute:'2-digit',
 hour12:true
@@ -1102,7 +1220,16 @@ function listenHeader(){
 onValue(ref(rtdb,"users/"+currentChat),(snap)=>{
 let d=snap.val();
 if(!d) return;
-chatStatus.innerText=d.online ? "Online" : "Last seen "+new Date(d.lastSeen).toLocaleTimeString();
+chatStatus.innerText=d.online
+? "Online"
+: "Last seen "+new Date(d.lastSeen).toLocaleString([],{
+day:'2-digit',
+month:'2-digit',
+year:'numeric',
+hour:'numeric',
+minute:'2-digit',
+hour12:true
+});
 typing.innerText=d.typingTo===me ? "Typing..." : "";
 });
 }
@@ -2149,7 +2276,29 @@ document
 
 } 
 
-autoLogin();
+window.toggleTheme = function(){
+
+document.body.classList.toggle("dark");
+
+localStorage.setItem(
+"theme",
+document.body.classList.contains("dark")
+? "dark"
+: "light"
+);
+
+};
+
+const savedTheme =
+localStorage.getItem("theme");
+
+if(savedTheme==="dark"){
+document.body.classList.add("dark");
+}
+
+document.getElementById("themeBtn").onclick = toggleTheme;
+
+show("loginPage");
 </script>
 <audio
 id="remoteAudio"
